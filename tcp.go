@@ -10,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/haochen233/socks5"
 	"github.com/shadowsocks/go-shadowsocks2/socks"
 )
 
@@ -92,8 +93,38 @@ func tcpLocal(addr, server string, shadow func(net.Conn) net.Conn, getAddr func(
 	}
 }
 
+func socks5Conn(socks5addr string, target string) (net.Conn, error) {
+	// create socks client
+	client := socks5.Client{
+		ProxyAddr: socks5addr,
+		// Authenticator supported by the client.
+		// It must not be nil.
+		Auth: map[socks5.METHOD]socks5.Authenticator{
+			// If client want send NO_AUTHENTICATION_REQUIRED method to server, must
+			// add socks5.NoAuth authenticator explicitly
+			socks5.NO_AUTHENTICATION_REQUIRED: &socks5.NoAuth{},
+		},
+	}
+
+	// client send CONNECT command and get a tcp connection.
+	// and use this connection transit data between you and www.google.com:80.
+	conn, err := client.Connect(socks5.Version5, target)
+	if err != nil {
+		return nil, err
+	}
+
+	return conn, nil
+}
+
+func targetTcpDial(sock5server string, target string) (net.Conn, error) {
+	if sock5server != "" {
+		return socks5Conn(sock5server, target)
+	}
+	return net.Dial("tcp", target)
+}
+
 // Listen on addr for incoming connections.
-func tcpRemote(addr string, shadow func(net.Conn) net.Conn) {
+func tcpRemote(addr string, shadow func(net.Conn) net.Conn, sock5server string) {
 	l, err := net.Listen("tcp", addr)
 	if err != nil {
 		logf("failed to listen on %s: %v", addr, err)
@@ -127,7 +158,7 @@ func tcpRemote(addr string, shadow func(net.Conn) net.Conn) {
 				return
 			}
 
-			rc, err := net.Dial("tcp", tgt.String())
+			rc, err := targetTcpDial(sock5server, tgt.String())
 			if err != nil {
 				logf("failed to connect to target: %v", err)
 				return

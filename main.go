@@ -27,22 +27,23 @@ var config struct {
 func main() {
 
 	var flags struct {
-		Client     string
-		Server     string
-		Cipher     string
-		Key        string
-		Password   string
-		Keygen     int
-		Socks      string
-		RedirTCP   string
-		RedirTCP6  string
-		TCPTun     string
-		UDPTun     string
-		UDPSocks   bool
-		UDP        bool
-		TCP        bool
-		Plugin     string
-		PluginOpts string
+		Client       string
+		Server       string
+		Cipher       string
+		Key          string
+		Password     string
+		Keygen       int
+		Socks        string
+		RedirTCP     string
+		RedirTCP6    string
+		TCPTun       string
+		UDPTun       string
+		UDPSocks     bool
+		UDP          bool
+		TCP          bool
+		Plugin       string
+		PluginOpts   string
+		Socks5Server string
 	}
 
 	flag.BoolVar(&config.Verbose, "verbose", false, "verbose mode")
@@ -62,6 +63,7 @@ func main() {
 	flag.StringVar(&flags.PluginOpts, "plugin-opts", "", "Set SIP003 plugin options. (e.g., \"server;tls;host=mydomain.me\")")
 	flag.BoolVar(&flags.UDP, "udp", false, "(server-only) enable UDP support")
 	flag.BoolVar(&flags.TCP, "tcp", true, "(server-only) enable TCP support")
+	flag.StringVar(&flags.Socks5Server, "socks5server", "", "(server-only) SOCKS5 server address")
 	flag.BoolVar(&config.TCPCork, "tcpcork", false, "coalesce writing first few packets")
 	flag.DurationVar(&config.UDPTimeout, "udptimeout", 5*time.Minute, "UDP tunnel timeout")
 	flag.Parse()
@@ -176,7 +178,7 @@ func main() {
 			go udpRemote(udpAddr, ciph.PacketConn)
 		}
 		if flags.TCP {
-			go tcpRemote(addr, ciph.StreamConn)
+			go tcpRemote(addr, ciph.StreamConn, flags.Socks5Server)
 		}
 	}
 
